@@ -1,2 +1,4 @@
 .vscode/
 voxcii
+models/
+src/.clang-format
