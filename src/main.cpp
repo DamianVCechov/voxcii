@@ -44,13 +44,18 @@ void run(Model &model, Config &cfg) {
     // initialize colors
     if (cfg.color) {
         start_color();
-        if (can_change_color()) {
-            for (size_t i = 0; i < model.materials.size(); ++i) {
-                auto &m = model.materials[i];
-                // scale 0-1 float to 0-1000 short for ncurses
-                init_color(i + 1, (short)(m.kd[0] * 1000), (short)(m.kd[1] * 1000), (short)(m.kd[2] * 1000));
-                init_pair(i + 1, i + 1, 0);
-            }
+        use_default_colors();
+        
+        for(size_t i=0; i < model.materials.size(); ++i) {
+            auto& m = model.materials[i];
+            
+            int r = std::clamp((int)std::round(m.kd[0] * 5.0f), 0, 5);
+            int g = std::clamp((int)std::round(m.kd[1] * 5.0f), 0, 5);
+            int b = std::clamp((int)std::round(m.kd[2] * 5.0f), 0, 5);
+            
+            // xterm 256 index
+            short color_idx = 16 + (36 * r) + (6 * g) + b;
+            init_pair(i+1, color_idx, -1);
         }
     }
 
@@ -67,6 +72,7 @@ void run(Model &model, Config &cfg) {
     bool running = true;
     bool needs_redraw = true;
     Vec3 light = Vec3(1, -1, 0).normalize();
+    std::vector<Vec3> rotated_vertices(model.vertices.size()); 
 
     // animation constants
     const float PI = 3.14159265359f;
@@ -99,22 +105,25 @@ void run(Model &model, Config &cfg) {
             float cos_az = std::cos(az), sin_az = std::sin(az);
             float cos_al = std::cos(-al), sin_al = std::sin(-al);
 
+            for (size_t i = 0; i < model.vertices.size(); ++i) {
+                Vec3 v = model.vertices[i];
+                v = v.rotateY(cos_az, sin_az);
+                v = v.rotateX(cos_al, sin_al);
+                rotated_vertices[i] = v;
+            }
+
             for (const auto &face : model.faces) {
-                Triangle t = {model.vertices[face.idxs[0]], model.vertices[face.idxs[1]], model.vertices[face.idxs[2]]};
-
-                // rotate
-                auto transform = [&](Vec3 v) {
-                    v = v.rotateY(cos_az, sin_az);
-                    v = v.rotateX(cos_al, sin_al);
-                    return v;
+                Triangle t = {
+                    rotated_vertices[face.idxs[0]], 
+                    rotated_vertices[face.idxs[1]], 
+                    rotated_vertices[face.idxs[2]]
                 };
-
-                t.p1 = transform(t.p1);
-                t.p2 = transform(t.p2);
-                t.p3 = transform(t.p3);
 
                 // lighting (calculate normal after rotation)
                 Vec3 normal = (t.p2 - t.p1).cross(t.p3 - t.p1).normalize();
+
+                if (normal.z > 0.0f)
+                    continue;
                 char c = getLumChar(normal * -1.0f, light, cfg.chars);
 
                 // map to screen surface
@@ -135,6 +144,13 @@ void run(Model &model, Config &cfg) {
         int ch = getch();
         if (ch == 'q')
             running = false;
+
+        if (ch == KEY_RESIZE) {
+            getmaxyx(stdscr, cfg.h, cfg.w);
+            logical_w = (float)cfg.w / (cfg.h * 1.8f);
+            surface = Surface(cfg.w, cfg.h, logical_w, logical_h);
+            needs_redraw = true;
+        }
 
         if (ch == 'i') {
             cfg.interactive = true;
@@ -209,6 +225,13 @@ int main(int argc, char **argv) {
         std::cerr << "  -i, --interactive   Manual control (Arrow keys)\n";
         std::cerr << "  -c, --color         Enable colors (if supported)\n";
         std::cerr << "  -z, --zoom <num>    Zoom level (default 100)\n";
+        std::cerr << "\n";
+        std::cerr << "Control:\n";
+        std::cerr << "   W S A D            Camera scrolling\n";
+        std::cerr << "   Arrows             Model tilt\n";
+        std::cerr << "   i                  Manual control\n";
+        std::cerr << "   p                  Autorotate\n";
+        std::cerr << "   + -                Zoom\n";
         return 1;
     }
 

@@ -16,18 +16,7 @@ void Surface::clear() {
     std::fill(pixels.begin(), pixels.end(), Pixel{});
 }
 
-int Surface::idxX(float x) const {
-    return std::clamp((int)std::floor(x / dx), 0, width - 1);
-}
-
-int Surface::idxY(float y) const {
-    return std::clamp((int)std::floor(y / dy), 0, height - 1);
-}
-
 void Surface::drawTriangle(const Triangle& inTri, char c, int mat_idx) {
-    // basic orientation culling
-    if ((inTri.p2.x - inTri.p1.x) * (inTri.p3.y - inTri.p2.y) < 
-        (inTri.p3.x - inTri.p2.x) * (inTri.p2.y - inTri.p1.y)) return;
 
     // sort by X for scanning
     std::array<Vec3, 3> pts = {inTri.p1, inTri.p2, inTri.p3};
@@ -39,8 +28,8 @@ void Surface::drawTriangle(const Triangle& inTri, char c, int mat_idx) {
     float xi = pts[0].x + dx/2.0f;
     float xf = pts[2].x - dx/2.0f;
     
-    int x_start = idxX(xi);
-    int x_end = idxX(xf);
+    int x_start = std::max(0, (int)std::floor(xi / dx));
+    int x_end = std::min(width - 1, (int)std::floor(xf / dx));
 
     auto getY = [&](const Vec3& pA, const Vec3& pB, float x) {
         if (pA.x == pB.x) return pA.y;
@@ -57,8 +46,8 @@ void Surface::drawTriangle(const Triangle& inTri, char c, int mat_idx) {
         float yi = std::min(y1, y2);
         float yf = std::max(y1, y2);
 
-        int y_start = idxY(yi + dy/2.0f);
-        int y_end = idxY(yf - dy/2.0f);
+        int y_start = std::max(0, (int)std::floor((yi + dy/2.0f) / dy));
+        int y_end = std::min(height - 1, (int)std::floor((yf - dy/2.0f) / dy));
 
         for (int yy = y_start; yy <= y_end; ++yy) {
             float y = (yy + 0.5f) * dy;

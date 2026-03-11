@@ -29,6 +29,4 @@ public:
     void printNCurses(bool color_support) const;
 
 private:
-    int idxX(float x) const;
-    int idxY(float y) const;
 };
