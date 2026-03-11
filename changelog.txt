@@ -1,0 +1,46 @@
+---------------------------------------------------------------------------------------------------
+Bug Fixes
+
+Edge Deformation (Clipping):
+Removed the idxX and idxY functions that caused vertices to be "squashed" at the terminal edges.
+Polygons are now clipped cleanly and correctly even when partially outside the screen.
+
+Color Support:
+Changed the method of initializing colors from .mtl files.
+Instead of attempting to overwrite the terminal palette using init_color (which often fails),
+RGB values are now converted to the closest equivalent in the standard 256-color xterm palette.
+
+---------------------------------------------------------------------------------------------------
+New Features
+
+Camera Panning:
+Added the ability to move across the model using the W, A, S, D keys.
+This is especially useful when zoomed in closely.
+
+Mode Switching:
+Press i to enter a fully manual interactive mode.
+Press p (play) to re-center the model and smoothly resume automatic rotation.
+
+Responsive Terminal:
+Added handling for the KEY_RESIZE event.
+When the terminal window is resized while the program is running,
+the rendering area is immediately recalculated and adjusted to the new dimensions.
+
+---------------------------------------------------------------------------------------------------
+Performance Optimizations
+
+Reduced CPU Usage While Idle:
+Introduced a needs_redraw flag. 
+In interactive mode, redrawing and 3D calculations are only performed when the user presses a key.
+
+Precomputed 3D Rotations:
+3D rotation is now applied to each vertex only once per frame (before the main loop),
+instead of recalculating it separately for every triangle.
+This reduced mathematical operations by roughly 80%.
+
+Early Backface Culling:
+Normal calculation has been moved directly into main.cpp.
+If a face is oriented away from the camera, the loop skips it immediately,
+avoiding unnecessary calls to the expensive 2D screen-space projection.
+
+---------------------------------------------------------------------------------------------------
